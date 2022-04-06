@@ -1,0 +1,37 @@
+name: ucar-dev
+
+channels:
+  - conda-forge
+
+dependencies:
+
+# setup dependencies
+  - setuptools >=45
+  - setuptools_scm >=6.2
+  - setuptools_scm_git_archive
+
+# core dependencies
+  - cartopy >=0.20
+  - click
+  - click-default-group
+  - pooch
+  - pyproj >=3.3
+  - pyvista
+  - pyvistaqt
+  - vtk =9
+
+# cmap dependencies
+  - cmocean
+  - colorcet
+
+# dev dependencies
+  - pip
+  - pythreejs
+  - ipyvtklink
+  - pykdtree
+  - iris
+  - iris-sample-data
+  - jupyter
+
+  - pip:
+    - git+https://github.com/bjlittle/geovista.git
