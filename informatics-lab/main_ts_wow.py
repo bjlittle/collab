@@ -36,15 +36,15 @@ class Points:
 @dataclass
 class Frame:
     nobs: int
-    index: np.ndarray    # master index into data for each site
-    cids: np.ndarray     # parent mesh cell (polygon) index for each site
-    sites: np.ndarray    # site names, sorted alphabetically (unique)
-    pois: np.ndarray     # site coordinates in native CRS
+    index: np.ndarray  # master index into data for each site
+    cids: np.ndarray  # parent mesh cell (polygon) index for each site
+    sites: np.ndarray  # site names, sorted alphabetically (unique)
+    pois: np.ndarray  # site coordinates in native CRS
     singles: np.ndarray  # mask of single sites within a parent cell
-    neighbours: dict     # the sites sharing which parent cell
-    dt: np.ndarray       # time-series datetime strings
-    data: np.ndarray     # contiguous time-series payload for each site
-    clim: LIMIT          # data payload minimum and maximum
+    neighbours: dict  # the sites sharing which parent cell
+    dt: np.ndarray  # time-series datetime strings
+    data: np.ndarray  # contiguous time-series payload for each site
+    clim: LIMIT  # data payload minimum and maximum
 
 
 def clean(names):
@@ -108,7 +108,18 @@ def prepare(fname: PathLike, mesh: pv.PolyData) -> Frame:
 
     clim = np.floor(data.min()), np.ceil(data.max())
 
-    frame = Frame(nobs=nobs, index=index, cids=cids, sites=sites, pois=pois, singles=singles, neighbours=neighbours, dt=dt, data=data, clim=clim)
+    frame = Frame(
+        nobs=nobs,
+        index=index,
+        cids=cids,
+        sites=sites,
+        pois=pois,
+        singles=singles,
+        neighbours=neighbours,
+        dt=dt,
+        data=data,
+        clim=clim,
+    )
 
     return frame
 
@@ -157,7 +168,11 @@ def coastline_geometries(
             if isinstance(geometry, (MultiLineString, MultiPolygon)):
                 multi_lines.extend(list(geometry.geoms))
             else:
-                coords = geometry.exterior.coords if isinstance(geometry, Polygon) else geometry.coords
+                coords = (
+                    geometry.exterior.coords
+                    if isinstance(geometry, Polygon)
+                    else geometry.coords
+                )
                 data = coords[:-1] if not closed and geometry.is_closed else coords[:]
                 xy = np.array(data, dtype=np.float32)
                 x = xy[:, 0].reshape(-1, 1)
@@ -226,7 +241,7 @@ def coastline_mesh(
         mesh.field_data["crs"] = wkt
 
     return mesh
-    
+
 
 def callback() -> None:
     global step
@@ -289,7 +304,9 @@ average = 0
 
 plotter = BackgroundPlotter()
 sargs = dict(title="Temperature / K", shadow=True)
-plotter.add_mesh(tmesh, scalar_bar_args=sargs, cmap="balance", clim=frame.clim, nan_color="grey")
+plotter.add_mesh(
+    tmesh, scalar_bar_args=sargs, cmap="balance", clim=frame.clim, nan_color="grey"
+)
 plotter.add_mesh(line, color="black")
 plotter.add_text(
     f"{clean(fname.stem)} ({1000 // interval}Hz refresh)",
@@ -298,11 +315,20 @@ plotter.add_text(
     shadow=True,
 )
 actor = plotter.add_point_labels(
-    frame.pois, frame.sites, point_color="red", point_size=10, render_points_as_spheres=True, always_visible=True,
-    shape="rounded_rect", shape_opacity=0.3, font_size=10
+    frame.pois,
+    frame.sites,
+    point_color="red",
+    point_size=10,
+    render_points_as_spheres=True,
+    always_visible=True,
+    shape="rounded_rect",
+    shape_opacity=0.3,
+    font_size=10,
 )
 
-dt_actor = plotter.add_text(frame.dt[step], position="upper_right", font_size=10, shadow=True)
+dt_actor = plotter.add_text(
+    frame.dt[step], position="upper_right", font_size=10, shadow=True
+)
 av_actor = plotter.add_text("", position="lower_left", font_size=10, shadow=True)
 
 plotter.add_axes()
