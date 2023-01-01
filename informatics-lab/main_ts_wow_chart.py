@@ -369,7 +369,7 @@ def callback() -> None:
 
     obs = frame.data[frame.index + step].filled(np.nan)
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", "Mean of empty slice")
+        warnings.filterwarnings("ignore", message="Mean of empty slice")
         average = np.nanmean(obs)
     for cid, sites in frame.neighbours.items():
         cell_mean = np.mean(obs[sites])
@@ -386,7 +386,8 @@ def callback() -> None:
     if line is None:
         chart_x = [datetime.strptime(frame.dt[step], "%Y-%m-%d %H:%M:%S")]
         chart_y = [average]
-        line = ax.plot(chart_x, chart_y, color="cyan", linewidth=0.5)[0]
+        line = ax.plot(chart_x, chart_y, color="cyan", linewidth=0.5, label="Mean")[0]
+        ax.legend(loc="upper right", fontsize="xx-small", facecolor="grey")
     else:
         if previous_step > step:
             chart_x, chart_y = [], []
@@ -486,7 +487,7 @@ dt_actor = plotter.add_text(
 fig, ax = plt.subplots(tight_layout=True)
 size = 7
 ax.set_xlabel("Date", fontsize=size)
-ax.set_ylabel("Mean Temperature / K", fontsize=size)
+ax.set_ylabel("Temperature / K", fontsize=size)
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
 ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
 ax.yaxis.set_major_locator(MaxNLocator(7))
