@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
+import warnings
 
 import cartopy.io.shapereader as shp
 from datetime import datetime
@@ -55,6 +56,30 @@ class Frame:
     data: np.ndarray  # contiguous time-series payload for each site
     clim: LIMIT  # data payload minimum and maximum
     extruded: pv.PolyData  # extruded site regions
+
+
+def picker(surface: pv.PolyData) -> None:
+    global plotter
+    global picked_cid
+
+    name = "picker-box"
+    if "ids" in surface.cell_data:
+        cid = np.unique(surface.cell_data["ids"])[0]
+        if picked_cid is not None and picked_cid == cid:
+            plotter.remove_actor(name)
+            picked_cid = None
+        else:
+            bounds = surface.bounds
+            box = pv.Box(bounds=bounds)
+            plotter.add_mesh(
+                box,
+                opacity=0.5,
+                color="red",
+                line_width=3,
+                style="wireframe",
+                name=name,
+            )
+            picked_cid = cid
 
 
 def clean(names):
@@ -343,7 +368,9 @@ def callback() -> None:
     global chart_y
 
     obs = frame.data[frame.index + step].filled(np.nan)
-    average = np.nanmean(obs)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", "Mean of empty slice")
+        average = np.nanmean(obs)
     for cid, sites in frame.neighbours.items():
         cell_mean = np.mean(obs[sites])
         obs[sites] = cell_mean
@@ -412,10 +439,13 @@ plotter.add_mesh(
     clim=frame.clim,
     nan_color="grey",
     show_scalar_bar=False,
+    pickable=False,
 )
 color = "darkgrey"
-plotter.add_mesh(line, color=color)
-plotter.add_mesh(line.translate((0, 0, -EXTRUDE_BASE), inplace=False), color=color)
+plotter.add_mesh(line, color=color, pickable=False)
+plotter.add_mesh(
+    line.translate((0, 0, -EXTRUDE_BASE), inplace=False), color=color, pickable=False
+)
 
 for cid in frame.extruded:
     plotter.add_mesh(
@@ -425,6 +455,7 @@ for cid in frame.extruded:
         clim=frame.clim,
         nan_color="cyan",
         show_scalar_bar=True,
+        pickable=True,
     )
 
 actor = plotter.scalar_bar.GetAnnotationTextProperty()
@@ -488,5 +519,14 @@ line, chart_x, chart_y = None, None, None
 
 # plotter.add_axes()
 plotter.view_xy()
+
+picked_cid = None
+plotter.enable_mesh_picking(
+    callback=picker,
+    left_clicking=True,
+    style="wireframe",
+    opacity=0,
+    show_message=False,
+)
 
 plotter.add_callback(callback, interval=interval)
