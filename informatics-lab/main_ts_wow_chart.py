@@ -207,6 +207,7 @@ def prepare(fname_shape: PathLike, fname_density: PathLike, mesh: pv.PolyData) -
     return frame
 
 
+# TODO: replace when available from geovista release
 def find_nearest_cell(
     mesh: pv.PolyData,
     x: float,
@@ -237,6 +238,7 @@ def find_nearest_cell(
     return result
 
 
+# TODO: replace when available from geovista release
 def coastline_geometries(
     fname: str,
     closed: Optional[bool] = True,
@@ -271,6 +273,7 @@ def coastline_geometries(
     return lines
 
 
+# TODO: replace when available from geovista release
 def coastline_mesh_line(
     fname: str,
 ) -> pv.PolyData:
@@ -298,6 +301,7 @@ def coastline_mesh_line(
     return mesh
 
 
+# TODO: replace when available from geovista release
 def coastline_mesh(
     fname: str,
 ) -> pv.PolyData:
@@ -326,6 +330,7 @@ def coastline_mesh(
     return mesh
 
 
+# TODO: replace when available from geovista release
 def cast_UnstructuredGrid_to_PolyData(
     mesh: pv.UnstructuredGrid,
     clean: Optional[bool] = False,
@@ -529,5 +534,6 @@ plotter.enable_mesh_picking(
     opacity=0,
     show_message=False,
 )
+# plotter.enable_fly_to_right_click()
 
 plotter.add_callback(callback, interval=interval)
