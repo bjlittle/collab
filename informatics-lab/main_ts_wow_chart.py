@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 import warnings
 
 import cartopy.io.shapereader as shp
@@ -36,12 +36,37 @@ WGS84 = CRS.from_user_input("epsg:4326")
 EXTRUDE: int = 2000
 EXTRUDE_BASE: int = 250
 
+#: Convenience kwargs
+LEGEND_KWARGS: Dict[str, str] = dict(
+    loc="upper right", fontsize="xx-small", facecolor="grey"
+)
+
+#: Time-series animation increment and start (in hours)
+TIME_STEP: int = 24
+TIME_START: int = 12
+
+#: Matplotlib chart common kwarg values
+LINEWIDTH: int = 1
+
 
 @dataclass
 class Points:
     x: float
     y: float
     xyz: XYZ
+
+
+@dataclass
+class Picked:
+    previous: Optional[int] = None
+    current: Optional[int] = None
+
+    def update(self, value: Optional[int] = None):
+        self.previous = self.current
+        self.current = value
+
+    def __str__(self) -> str:
+        return f"Picked(previous={self.previous!r}, current={self.current!r})"
 
 
 @dataclass
@@ -60,26 +85,23 @@ class Frame:
 
 def picker(surface: pv.PolyData) -> None:
     global plotter
-    global picked_cid
+    global picked
 
     name = "picker-box"
     if "ids" in surface.cell_data:
         cid = np.unique(surface.cell_data["ids"])[0]
-        if picked_cid is not None and picked_cid == cid:
+        if picked.current is not None and picked.current == cid:
             plotter.remove_actor(name)
-            picked_cid = None
+            picked.update()
         else:
-            bounds = surface.bounds
-            box = pv.Box(bounds=bounds)
+            outline = surface.extract_feature_edges()
             plotter.add_mesh(
-                box,
-                opacity=0.5,
-                color="red",
+                outline,
+                color="white",
                 line_width=3,
-                style="wireframe",
                 name=name,
             )
-            picked_cid = cid
+            picked.update(cid)
 
 
 def clean(names):
@@ -368,9 +390,7 @@ def callback() -> None:
     global dt_actor
     global plotter
     global ax
-    global line
-    global chart_x
-    global chart_y
+    global picked
 
     obs = frame.data[frame.index + step].filled(np.nan)
     with warnings.catch_warnings():
@@ -388,27 +408,66 @@ def callback() -> None:
         region.cell_data["data"] = obs[site]
         region.set_active_scalars("data", preference="cell")
 
-    if line is None:
-        chart_x = [datetime.strptime(frame.dt[step], "%Y-%m-%d %H:%M:%S")]
-        chart_y = [average]
-        line = ax.plot(chart_x, chart_y, color="cyan", linewidth=0.5, label="Mean")[0]
-        ax.legend(loc="upper right", fontsize="xx-small", facecolor="grey")
+    mline = ax.lines[0]
+    oline = None if len(ax.lines) == 1 else ax.lines[-1]
+
+    if previous_step > step:
+        chart_x, chart_y = np.array([], dtype=str), np.array([], dtype=float)
     else:
-        if previous_step > step:
-            chart_x, chart_y = [], []
+        chart_x = mline.get_xdata()
+        chart_y = mline.get_ydata()
+
+    x = datetime.strptime(frame.dt[step], "%Y-%m-%d %H:%M:%S")
+    mline.set_xdata(np.concatenate([chart_x, [x]]))
+    mline.set_ydata(np.concatenate([chart_y, [average]]))
+
+    def get_ts(
+        cid: int, xs: Optional[np.ndarray] = None, ys: Optional[np.ndarray] = None
+    ) -> Tuple[np.ndarray, np.ndarray, str]:
+        i = np.where(frame.cids == cid)[0]
         x = datetime.strptime(frame.dt[step], "%Y-%m-%d %H:%M:%S")
-        chart_x.append(x)
-        chart_y.append(average)
-        line.set_xdata(chart_x)
-        line.set_ydata(chart_y)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice")
+            y = np.nanmean(frame.data[frame.index[i] + step].filled(np.nan))
+        if xs is not None:
+            x = np.concatenate([xs, [x]])
+        if ys is not None:
+            y = np.concatenate([ys, [y]])
+        site = frame.sites[i][0]
+        if i.size > 1:
+            site = f"{site} et al"
+        return x, y, site
+
+    if oline is None and picked.current is not None:
+        x, y, label = get_ts(picked.current)
+        ax.plot(x, y, color="magenta", linewidth=LINEWIDTH, label=label)
+        ax.legend(**LEGEND_KWARGS)
+    elif oline is not None:
+        if picked.current is None:
+            ax.lines.remove(oline)
+            ax.legend(**LEGEND_KWARGS)
+        elif picked.previous is not None and picked.current is not None:
+            ax.lines.remove(oline)
+            x, y, label = get_ts(picked.current)
+            ax.plot(x, y, color="magenta", linewidth=LINEWIDTH, label=label)
+            picked.previous = None
+            ax.legend(**LEGEND_KWARGS)
+        else:
+            if previous_step > step:
+                xs, ys = np.array([], dtype=str), np.array([], dtype=float)
+            else:
+                xs, ys = oline.get_xdata(), oline.get_ydata()
+            x, y, _ = get_ts(picked.current, xs=xs, ys=ys)
+            oline.set_xdata(x)
+            oline.set_ydata(y)
 
     previous_step = step
-    step = (step + 24) % frame.nobs
+    step = (step + TIME_STEP) % frame.nobs
 
 
 fname1 = "LSOA_2004_London_Low_Resolution.shp"
 fname2 = "LSOA_2011_London_gen_MHW.shp"
-fname3 = "London_Borough_Excluding_MHW.shp"  #
+fname3 = "London_Borough_Excluding_MHW.shp"
 fname4 = "London_Ward.shp"
 fname5 = "London_Ward_CityMerged.shp"
 fname6 = "MSOA_2004_London_High_Resolution.shp"
@@ -433,7 +492,7 @@ tmesh = emesh.triangulate()
 
 interval = 200
 previous_step = 0
-step = 12
+step = TIME_START
 
 plotter = BackgroundPlotter()
 title = "Temperature / K"
@@ -504,7 +563,7 @@ ax.tick_params(axis="x", labelsize=size - 1, labelrotation=45)
 ax.tick_params(axis="y", labelsize=size)
 ymean = frame.data.mean()
 color = "red"
-ax.hlines(y=ymean, xmin=start, xmax=end, color=color, linewidth=1)
+ax.hlines(y=ymean, xmin=start, xmax=end, color=color, linewidth=LINEWIDTH)
 # https://stackoverflow.com/questions/6319155/show-the-final-y-axis-value-of-each-line-with-matplotlib
 plt.annotate(
     f"{ymean:.1f}",
@@ -518,15 +577,16 @@ plt.annotate(
     bbox=dict(boxstyle="round", ec=color, fc="darkgrey", lw=1),
 )
 ax.grid(True)
+ax.plot([], [], color="cyan", linewidth=LINEWIDTH, label="Mean")
+ax.legend(loc="upper right", fontsize="xx-small", facecolor="grey")
 chart = pv.ChartMPL(fig, size=(0.3, 0.35), loc=(0.01, 0.01))
 chart.background_color = (1, 1, 1, 0.5)
 plotter.add_chart(chart)
-line, chart_x, chart_y = None, None, None
 
 # plotter.add_axes()
 plotter.view_xy()
 
-picked_cid = None
+picked = Picked()
 plotter.enable_mesh_picking(
     callback=picker,
     left_clicking=True,
