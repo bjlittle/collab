@@ -189,6 +189,15 @@ def plot_base_layer(mesh: PolyData, zlevel: Optional[int] = None) -> None:
     plotter.add_base_layer(
         mesh=mesh.copy(), texture=geovista.natural_earth_hypsometric(), zlevel=zlevel
     )
+
+    M, N = 45, 90
+    lats = np.linspace(-90, 90, M + 1)
+    lons = np.linspace(-180, 180, N + 1)
+    data = np.random.random(M * N)
+    # create the grid from the synthetic data
+    grid = geovista.Transform.from_1d(lons, lats)
+    plotter.add_base_layer(mesh=grid, style="wireframe", color="grey", zlevel=zlevel)
+
     plotter.add_axes()
     plotter.add_text(
         f"Wireframe with Points, and Texture Mapped Base Layer ({zlevel=})",
@@ -216,15 +225,15 @@ mesh = geovista.Transform.from_unstructured(lon, lat, connectivity=connectivity)
 # some example plots using geovista...
 #
 
-plot_point_cloud(mesh)
-
-for preference in [None, "face", "point"]:
-    plot_surface(mesh, preference=preference)
-
-plot_wireframe(mesh)
-
-for preference in ["point", "face"]:
-    plot_labels(mesh, preference)
+# plot_point_cloud(mesh)
+#
+# for preference in [None, "face", "point"]:
+#     plot_surface(mesh, preference=preference)
+#
+# plot_wireframe(mesh)
+#
+# for preference in ["point", "face"]:
+#     plot_labels(mesh, preference)
 
 for zlevel in [-1, -10, -100, -300]:
     plot_base_layer(mesh, zlevel=zlevel)
