@@ -16,7 +16,7 @@ DEFAULT_N_VERTS: int = 3
 def build_connectivity(matrix: ArrayLike, n_verts: Optional[int] = None) -> ArrayLike:
     """
     Create the mesh connectivity based on the adjacency `matrix`, which
-    encodes the mesh topology as the edges connecting joining immediate
+    encodes the mesh topology as the edges connecting immediate
     graph node neighbours.
 
     Parameters
@@ -190,7 +190,7 @@ def plot_base_layer(mesh: PolyData, zlevel: Optional[int] = None) -> None:
         mesh=mesh.copy(), texture=geovista.natural_earth_hypsometric(), zlevel=zlevel
     )
 
-    # create the regular grid from the synthetic data
+    # create the regular grid
     M, N = 45, 90
     lats = np.linspace(-90, 90, M + 1)
     lons = np.linspace(-180, 180, N + 1)
