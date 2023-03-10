@@ -25,6 +25,8 @@ Simply,
 ```bash
 python main.py
 ```
+Enjoy 🥳
+
 
 ### Reference
 
