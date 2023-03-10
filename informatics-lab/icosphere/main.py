@@ -190,11 +190,10 @@ def plot_base_layer(mesh: PolyData, zlevel: Optional[int] = None) -> None:
         mesh=mesh.copy(), texture=geovista.natural_earth_hypsometric(), zlevel=zlevel
     )
 
+    # create the regular grid from the synthetic data
     M, N = 45, 90
     lats = np.linspace(-90, 90, M + 1)
     lons = np.linspace(-180, 180, N + 1)
-    data = np.random.random(M * N)
-    # create the grid from the synthetic data
     grid = geovista.Transform.from_1d(lons, lats)
     plotter.add_base_layer(mesh=grid, style="wireframe", color="grey", zlevel=zlevel)
 
@@ -205,6 +204,14 @@ def plot_base_layer(mesh: PolyData, zlevel: Optional[int] = None) -> None:
         font_size=10,
         shadow=True,
     )
+    plotter.show()
+
+
+def plot_proj(mesh: PolyData) -> None:
+    plotter = geovista.GeoPlotter(crs="+proj=robin")
+    plotter.add_mesh(mesh, show_edges=True)
+    plotter.add_axes()
+    plotter.view_xy()
     plotter.show()
 
 
@@ -237,3 +244,5 @@ for preference in ["point", "face"]:
 
 for zlevel in [-1, -10, -100, -300]:
     plot_base_layer(mesh, zlevel=zlevel)
+
+plot_proj(mesh)
