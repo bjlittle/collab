@@ -225,15 +225,15 @@ mesh = geovista.Transform.from_unstructured(lon, lat, connectivity=connectivity)
 # some example plots using geovista...
 #
 
-# plot_point_cloud(mesh)
-#
-# for preference in [None, "face", "point"]:
-#     plot_surface(mesh, preference=preference)
-#
-# plot_wireframe(mesh)
-#
-# for preference in ["point", "face"]:
-#     plot_labels(mesh, preference)
+plot_point_cloud(mesh)
+
+for preference in [None, "face", "point"]:
+    plot_surface(mesh, preference=preference)
+
+plot_wireframe(mesh)
+
+for preference in ["point", "face"]:
+    plot_labels(mesh, preference)
 
 for zlevel in [-1, -10, -100, -300]:
     plot_base_layer(mesh, zlevel=zlevel)
