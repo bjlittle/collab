@@ -6,18 +6,18 @@ Proof of concept playground for icosphere rendering with `geovista`.
 
 ### Contents
 
-Refer to the `main.py` script for various example techniques to render the icosphere using `geovista`.
+Refer to the `main.py` Python script that explores various example techniques to render the icosphere using `geovista`.
 
 `networkx` is used to detect graph cycles and derive the mesh connectivity from the adjacency matrix. I'm sure there
 are other ways to do this, but this seems to (naively) work for now as a first approach.
 
-The derived connectivity is then used to create a `pyvista` mesh using `geovista`.
+The derived connectivity is then used to create a `pyvista` mesh using `geovista`, which is then rendered in the scene.
 
 ### Install
 
-Simply install `geovista` using either `conda` or `pip`, then run the `main.py` script to play.
+Simply install `geovista` using either `conda` or `pip`, then run the `main.py` Python script to play and explore.
 
-For `geovista` installation instructions, please see [here](https://github.com/bjlittle/geovista#installation) 👍
+For further clarity on `geovista` installation instructions, please see [here](https://github.com/bjlittle/geovista#installation) 👍
 
 ### Play
 
@@ -26,7 +26,6 @@ Simply,
 python main.py
 ```
 Enjoy 🥳
-
 
 ### Reference
 

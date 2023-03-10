@@ -34,8 +34,8 @@ def build_connectivity(matrix: ArrayLike, n_verts: Optional[int] = None) -> Arra
 
            0 1 2      0
                       |\
-        0  0 1 1      | \
-        1  1 0 1  ->  |  \
+        0  0 1 1  ->  | \
+        1  1 0 1      |  \
         2  1 1 0      2---1
 
         In terms of edge-to-node pairs we have the following:
@@ -95,6 +95,15 @@ def build_connectivity(matrix: ArrayLike, n_verts: Optional[int] = None) -> Arra
 
 
 def plot_point_cloud(mesh: PolyData) -> None:
+    """
+    Render only the points of the mesh as a spherical point cloud.
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+
+    """
     # copy the mesh to decorate it with data,
     # but with no side-effects to the caller mesh
     mesh = mesh.copy()
@@ -113,11 +122,27 @@ def plot_point_cloud(mesh: PolyData) -> None:
 
 
 def plot_surface(mesh: PolyData, preference: Optional[str] = None) -> None:
+    """
+    Render the cell faces of the spherical mesh, with synthetic data either
+    on the mesh faces or points (aka nodes/vertices).
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+    preference : str, optional
+        Synthetic random data will be associated mesh faces (``face``) or
+        points (``point``). Defaults to ``None``, where no data is
+        attached to the mesh.
+
+    """
     extra = ""
     mesh = mesh.copy()
 
     if preference is not None:
         preference = str(preference).lower()
+
+    assert preference in [None, "face", "point"]
 
     if preference == "face":
         mesh["Sample Data (Face)"] = np.random.random(mesh.n_cells)
@@ -140,6 +165,15 @@ def plot_surface(mesh: PolyData, preference: Optional[str] = None) -> None:
 
 
 def plot_wireframe(mesh: PolyData) -> None:
+    """
+    Render the spherical mesh as a simple wireframe.
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+
+    """
     plotter = geovista.GeoPlotter()
     plotter.add_mesh(mesh, style="wireframe", color="black")
     plotter.add_axes()
@@ -153,6 +187,18 @@ def plot_wireframe(mesh: PolyData) -> None:
 
 
 def plot_labels(mesh: PolyData, preference: str) -> None:
+    """
+    Render the spherical mesh with either the indices of the
+    faces (``face``) or points (``points``) labelled.
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+    preference : str
+        Render either the ``face`` or ``point`` indices.
+
+    """
     assert preference in ["face", "point"]
 
     plotter = geovista.GeoPlotter()
@@ -177,13 +223,26 @@ def plot_labels(mesh: PolyData, preference: str) -> None:
 
 
 def plot_base_layer(mesh: PolyData, zlevel: Optional[int] = None) -> None:
+    """
+    Render the mesh surrounding an inner base layer that is texture mapped
+    (for geo-location purposes) and with a regular grid-lines attached.
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+    zlevel : int, optional
+        The level that the base layer is offset within the outer
+        mesh. Defaults to ``-1``.
+
+    """
     if zlevel is None:
         zlevel = -1
     else:
         # enforce a negative level here
         zlevel = -abs(int(zlevel))
 
-    plotter = geovista.GeoPlotter()
+    plotter = geovista.GeoPlotter(lighting="three lights")
     plotter.add_mesh(mesh, style="wireframe", color="black")
     plotter.add_points(mesh.points, render_points_as_spheres=True, color="red")
     plotter.add_base_layer(
@@ -207,11 +266,62 @@ def plot_base_layer(mesh: PolyData, zlevel: Optional[int] = None) -> None:
     plotter.show()
 
 
-def plot_proj(mesh: PolyData) -> None:
-    plotter = geovista.GeoPlotter(crs="+proj=robin")
+def plot_texture(mesh: PolyData) -> None:
+    """
+    Render the mesh with a texture map of the globe, and anchor
+    points at the North Pole, South Pole and on the anti-meridian
+    at the Equator.
+
+    Note the necessary seam along the anti-meridian. This can be avoided
+    by using the alternative base layer technique, see ``plot_base_layer``.
+
+    Also note, due to the flat polyhedral faces, their lack of curvature
+    is noticeable on closer inspection, in comparison to the anchor
+    points.
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+
+    """
+    plotter = geovista.GeoPlotter(lighting="three lights")
+    plotter.add_mesh(
+        mesh, texture=geovista.natural_earth_1(), show_edges=True, edge_color="black"
+    )
+    lons = [0, -180, 0]
+    lats = [90, 0, -90]
+    xyz = geovista.common.to_spherical(lons, lats)
+    plotter.add_points(xyz, render_points_as_spheres=True, color="red", point_size=10)
+    plotter.add_axes()
+    plotter.show()
+
+
+def plot_proj(mesh: PolyData, proj: Optional[str] = None) -> None:
+    """
+    Render the mesh after it has been transformed to the target projection.
+
+    Parameters
+    ----------
+    mesh : PolyData
+        The mesh to be rendered.
+    proj : str, optional
+        The ``proj`` projection name. Defaults to ``robin``.
+
+    """
+    if proj is None:
+        proj = "robin"
+
+    plotter = geovista.GeoPlotter(crs=f"+proj={proj}")
     plotter.add_mesh(mesh, show_edges=True)
     plotter.add_axes()
     plotter.view_xy()
+    plotter.add_text(
+        f'Projection "+proj={proj}"',
+        position="upper_left",
+        font_size=10,
+        shadow=True,
+    )
     plotter.show()
 
 
@@ -228,6 +338,9 @@ connectivity = build_connectivity(matrix)
 # create the mesh
 mesh = geovista.Transform.from_unstructured(lon, lat, connectivity=connectivity)
 
+# provide some handy mesh analytics
+print(mesh)
+
 #
 # some example plots using geovista...
 #
@@ -242,7 +355,10 @@ plot_wireframe(mesh)
 for preference in ["point", "face"]:
     plot_labels(mesh, preference)
 
+plot_texture(mesh)
+
 for zlevel in [-1, -10, -100, -300]:
     plot_base_layer(mesh, zlevel=zlevel)
 
-plot_proj(mesh)
+for proj in ["robin", "moll", "hammer", "poly", "fouc"]:
+    plot_proj(mesh, proj=proj)
