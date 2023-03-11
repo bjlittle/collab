@@ -68,7 +68,7 @@ def build_connectivity(matrix: ArrayLike, n_verts: Optional[int] = None) -> Arra
     # derived from the adjacency matrix
     midx, nidx = np.where(matrix)
     idxs = set(midx) | set(nidx)
-    edges = list(zip(midx, nidx))
+    edges = zip(midx, nidx)
     graph = nx.Graph()
     [graph.add_edge(*edge) for edge in edges]
 
