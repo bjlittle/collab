@@ -75,7 +75,7 @@ def build_connectivity(matrix: ArrayLike, n_verts: Optional[int] = None) -> Arra
     # use networkx to discover all cycles within the graph composed
     # of n_verts nodes.
     faces = set()
-    for idx in sorted(idxs):
+    for idx in idxs:
         cycles = nx.cycle_basis(graph, idx)
         cycles = {
             tuple(sorted(cycle))
