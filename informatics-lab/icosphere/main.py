@@ -70,7 +70,7 @@ def build_connectivity(matrix: ArrayLike, n_verts: Optional[int] = None) -> Arra
     idxs = set(midx) | set(nidx)
     edges = zip(midx, nidx)
     graph = nx.Graph()
-    [graph.add_edge(*edge) for edge in edges]
+    graph.add_edges_from(edges)
 
     # use networkx to discover all cycles within the graph composed
     # of n_verts nodes.
