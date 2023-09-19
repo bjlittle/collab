@@ -6,6 +6,7 @@ channels:
 dependencies:
 
   - geovista=0.1.0
+  - appdirs
   - pyvista=0.37
   - iris
   - matplotlib<3.7
