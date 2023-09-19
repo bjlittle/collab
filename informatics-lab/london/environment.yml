@@ -1,0 +1,13 @@
+name: infomatics 
+
+channels:
+  - conda-forge
+
+dependencies:
+
+  - geovista=0.1.0
+  - pyvista=0.37
+  - iris
+  - matplotlib<3.7
+  - pyqt
+  - pyvistaqt
