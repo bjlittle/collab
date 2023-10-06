@@ -1,0 +1,10 @@
+name: kscale-dev
+
+channels:
+  - conda-forge
+
+dependencies:
+  - iris
+  - geovista
+  - pyvistaqt
+  - pyqt
