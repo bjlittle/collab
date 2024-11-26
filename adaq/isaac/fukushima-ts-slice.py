@@ -32,10 +32,14 @@ show_deposit = True
 show_edge = True
 show_plume = True
 show_smooth = False
+show_clip = False
+reset_clip = False
+show_contour = False
+isosurfaces = 200
+isosurfaces_range = (0, 200)
 
 
-# def callback(value) -> None:
-def callback() -> None:
+def callback_render(value: None) -> None:
     global tstep
     global n_tsteps
     global plume_data
@@ -59,11 +63,29 @@ def callback() -> None:
     global actor_edge
     global show_smooth
     global deposit_cmap
+    global show_clip
+    global reset_clip
+    global show_contour
+    global isosurfaces
+    global isosurfaces_range
 
-    # value = int(value)
 
-    # tstep = value % n_tsteps
-    tstep = (tstep + 1) % n_tsteps
+    skip_accumulate = False
+
+    # print(f"{reset_clip=} {len(p.plane_widgets)=}")
+
+    if value is None:
+        value = tstep
+        skip_accumulate = True
+    else:
+        reset_clip = True
+
+    # print(f"{reset_clip=} {len(p.plane_widgets)=}")
+
+    value = int(value)
+
+    tstep = value % n_tsteps
+    # tstep = (tstep + 1) % n_tsteps
 
     if tstep == 0:
         # exit()
@@ -81,23 +103,9 @@ def callback() -> None:
     # tmp.save(f"vtk/mesh_grid1_{dt.strftime("%Y%m%d%H%M")}.vtk")
     tmp = pv.read(f"vtk/mesh_grid1_{dt.strftime('%Y%m%d%H%M')}.vtk")
 
-    if threshold:
-        tmp = tmp.threshold(threshold)
-
-    if show_plume:
-        if show_smooth:
-            tmp = tmp.extract_geometry().smooth_taubin(n_iter=50, pass_band=0.02, normalize_coordinates=True,
-                                                       feature_angle=30, non_manifold_smoothing=True)
-
-        actor_plume = p.add_mesh(tmp, name="plume", cmap=cmap, clim=clim, render=False, reset_camera=False, show_scalar_bar=False, above_color="green")
-    else:
-        actor_plume.SetVisibility(False)
-
-    p.add_actor(actor_scalar)
-
-    frame = deposit_data[tstep][:].flatten()
-    deposit["data"] += frame
-    deposit_null["data"] = frame
+    if not skip_accumulate:
+        deposit["data"] = deposit_data[:tstep].sum(axis=0).flatten()
+        deposit_null["data"] = deposit_data[tstep][:].flatten()
 
     if show_deposit:
         actor_deposit = p.add_mesh(deposit.threshold(1e-20), name="deposit", cmap=deposit_cmap, clim=deposit_clim, show_scalar_bar=False)
@@ -109,42 +117,145 @@ def callback() -> None:
     else:
         actor_edge.SetVisibility(False)
 
+    if threshold:
+        tmp = tmp.threshold(threshold)
+
+    if reset_clip:
+        if p.plane_widgets:
+            p.plane_widgets.pop().Off()
+
+    if show_plume:
+        if show_smooth:
+            tmp = tmp.extract_geometry().smooth_taubin(n_iter=50, pass_band=0.02, normalize_coordinates=True,
+                                                       feature_angle=30, non_manifold_smoothing=True)
+
+        if show_clip:
+            if reset_clip:
+                actor_plume = p.add_mesh_clip_plane(tmp, widget_color="white", normal="z", outline_opacity=0, name="plume", cmap=cmap, clim=clim, render=False, reset_camera=False,
+                                         show_scalar_bar=False, above_color="green")
+        else:
+            opacity = None
+            if show_contour:
+                tmp = tmp.cell_data_to_point_data().contour(isosurfaces, scalars="data", rng=isosurfaces_range)
+                opacity = "linear_r"
+            actor_plume = p.add_mesh(tmp, opacity=opacity, name="plume", cmap=cmap, clim=clim, render=False, reset_camera=False, show_scalar_bar=False, above_color="green")
+    else:
+        actor_plume.SetVisibility(False)
+
+    reset_clip = False
+
+    p.add_actor(actor_scalar)
+
     text = f"{dt.strftime(fmt)}"
     actor_text.SetText(3, text)
 
 
 def callback_base(actor: Actor, flag: bool) -> None:
+    global reset_clip
+
     actor.SetVisibility(flag)
+    callback_render(None)
 
 
 def callback_deposit(flag: bool) -> None:
     global show_deposit
 
     show_deposit = bool(flag)
+    callback_render(None)
 
 
 def callback_edge(flag: bool) -> None:
     global show_edge
 
     show_edge = bool(flag)
+    callback_render(None)
 
 
 def callback_plume(flag: bool) -> None:
     global show_plume
+    global reset_clip
 
     show_plume = bool(flag)
+    reset_clip = True
+    callback_render(None)
 
 
 def callback_smooth(flag: bool) -> None:
     global show_smooth
+    global reset_clip
 
     show_smooth = bool(flag)
+    reset_clip = True
+    callback_render(None)
 
 
 def callback_threshold(value: float) -> None:
     global threshold
+    global reset_clip
 
     threshold = value
+    reset_clip = True
+    callback_render(None)
+
+
+def callback_clip(flag: bool) -> None:
+    global show_clip
+    global reset_clip
+
+    show_clip = bool(flag)
+    reset_clip = True
+    callback_render(None)
+
+
+def callback_contour(flag: bool) -> None:
+    global show_contour
+    global reset_clip
+    global actor_isosurfaces
+    global actor_min
+    global actor_max
+
+    show_contour = bool(flag)
+    reset_clip = True
+    actor_isosurfaces.GetRepresentation().SetVisibility(show_contour)
+    actor_min.GetRepresentation().SetVisibility(show_contour)
+    actor_max.GetRepresentation().SetVisibility(show_contour)
+    callback_render(None)
+
+
+def callback_isosurfaces(value: float) -> None:
+    global isosurfaces
+    global reset_clip
+
+    isosurfaces = round(value)
+    callback_render(None)
+
+
+def callback_min(min_value: float) -> None:
+    global isosurfaces_range
+    global actor_max
+
+    max_value = isosurfaces_range[1]
+    if min_value > max_value:
+        # force the movement of the maximum value
+        max_value = min_value
+        actor_max.GetRepresentation().SetValue(max_value)
+
+    isosurfaces_range = (min_value, max_value)
+    callback_render(None)
+
+
+def callback_max(max_value) -> None:
+    global isosurfaces_range
+    global actor_min
+
+    min_value = isosurfaces_range[0]
+    if max_value < min_value:
+        # force the movement of the minimum value
+        min_value = max_value
+        actor_min.GetRepresentation().SetValue(min_value)
+
+    isosurfaces_range = (min_value, max_value)
+    callback_render(None)
 
 
 fname_plume = "fukushima_grid1_201103.nc"
@@ -186,7 +297,6 @@ vmax = 500.0
 clim = (vmin, vmax)
 
 cmap = "fire_r"
-# cmap = "balance"
 color = "white"
 
 # xyz = to_cartesian(xx, yy, zlevel=zz, zscale=0.005)
@@ -355,10 +465,55 @@ p.add_text(
     color=color,
 )
 
+y += size + pad
 
-input()
+p.add_checkbox_button_widget(
+    callback_clip,
+    value=show_clip,
+    color_on="green",
+    color_off="red",
+    size=size,
+    position=(x, y),
+)
+p.add_text(
+    "Clip Plane",
+    position=(x + size + offset, y + offset),
+    font_size=font_size,
+    color=color,
+)
+
+y += size + pad
+
+actor_contour = p.add_checkbox_button_widget(
+    callback_contour,
+    value=show_contour,
+    color_on="green",
+    color_off="red",
+    size=size,
+    position=(x, y),
+)
+p.add_text(
+    "Contour",
+    position=(x + size + offset, y + offset),
+    font_size=font_size,
+    color=color,
+)
 
 
-p.add_slider_widget(callback_threshold, (0, 10), value=0, pointa=(0.4, 0.9), pointb=(0.95, 0.9), slider_width=0.02, title_height=0.02, tube_width=0.001, fmt="%.4f", color=color, title=f"Threshold ({str(cube_plume.units)})", style="modern")
-# p.show()
-p.add_callback(callback, interval=200)
+# input()
+
+actor_isosurfaces = p.add_slider_widget(callback_isosurfaces, (10, 5000), value=isosurfaces, pointa=(0.05, 0.9), pointb=(0.45, 0.9), slider_width=0.02, title_height=0.02, tube_width=0.001, fmt="%.0f", color=color, title="Isosurfaces", style="modern")
+actor_isosurfaces.GetRepresentation().SetVisibility(False)
+
+vmin, vmax = isosurfaces_range
+actor_min = p.add_slider_widget(callback_min, (0, 5000), value=vmin, pointa=(0.05, 0.8), pointb=(0.45, 0.8), slider_width=0.02, title_height=0.02, tube_width=0.001, fmt="%.0f", color=color, title="Isosurface Range", style="modern")
+actor_min.GetRepresentation().SetVisibility(False)
+
+actor_max = p.add_slider_widget(callback_max, (0, 5000), value=vmax, pointa=(0.05, 0.8), pointb=(0.45, 0.8), slider_width=0.02, title_height=0.02, tube_width=0.0, fmt="%.0f", color=color, style="modern")
+actor_max.GetRepresentation().SetVisibility(False)
+
+p.add_slider_widget(callback_threshold, (0, 10), value=0, pointa=(0.55, 0.9), pointb=(0.95, 0.9), slider_width=0.02, title_height=0.02, tube_width=0.001, fmt="%.4f", color=color, title=f"Threshold ({str(cube_plume.units)})", style="modern")
+p.add_slider_widget(callback_render, (tstep, n_tsteps-1), value=tstep, pointa=(0.55, 0.8), pointb=(0.95, 0.8), slider_width=0.02, title_height=0.02, tube_width=0.001, fmt="%.0f", color=color, title="Time Step", style="modern")
+
+
+p.show()
