@@ -8,8 +8,6 @@ fname = ("fukushima_grid1_201103.nc")
 cube = iris.load_cube(fname)
 vmin, vmax = np.nan, np.nan
 
-breakpoint()
-
 for i, part in enumerate(cube.slices_over("time")):
     data = part.data
     dmin = np.min(data)
