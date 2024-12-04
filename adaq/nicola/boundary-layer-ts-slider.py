@@ -22,7 +22,7 @@ import pyvista as pv
 
 
 # def callback(value) -> None:
-def callback() -> None:
+def callback(value: None) -> None:
     global tstep
     global n_tsteps
     global bl_t
@@ -35,7 +35,9 @@ def callback() -> None:
     global factor
     global opacity
 
-    tstep = (tstep + 1) % n_tsteps
+    value = int(value)
+
+    tstep = value % n_tsteps
 
     # if tstep == 0:
         # exit()
@@ -137,6 +139,5 @@ p.add_axes(color=color)
 
 del bl_cube
 
-input()
-
-p.add_callback(callback, interval=200)
+p.add_slider_widget(callback, (0, n_tsteps-1), value=0, pointa=(0.4, 0.9), pointb=(0.95, 0.9), slider_width=0.02, title_height=0.02, tube_width=0.001, fmt="%.0f", color=color, title="Time Step", style="modern")
+p.show()
