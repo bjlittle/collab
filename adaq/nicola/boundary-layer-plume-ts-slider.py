@@ -50,6 +50,11 @@ def callback(value: None) -> None:
     dt = p_t.units.num2date(p_t.points[tstep])
     bl_dt = bl_t.units.num2date(bl_t.points[bl_tstep])
 
+    data = np.ma.masked_less_equal(p_data[tstep][:], 0).filled(np.nan).flatten()
+    p_mesh["data"] = data
+    p.add_mesh(p_mesh.threshold(), cmap=p_cmap, clim=p_clim, render=False, reset_camera=False, name="plume",
+               show_scalar_bar=False)
+
     # bl_mesh["data"] = bl_data[bl_tstep][:].flatten()
     # bl_mesh.save(f"vtk/mesh_boundary_layer_{bl_dt.strftime("%Y%m%d%H%M")}.vtk")
     bl_mesh = pv.read(f"vtk/mesh_boundary_layer_{bl_dt.strftime('%Y%m%d%H%M')}.vtk")
@@ -61,10 +66,6 @@ def callback(value: None) -> None:
 
     p.add_mesh(bl_mesh, name="boundary", opacity=opacity, cmap=bl_cmap, clim=bl_clim, render=False, reset_camera=False, show_scalar_bar=False)
     p.add_actor(actor_scalar)
-
-    data = np.ma.masked_less_equal(p_data[tstep][:], 0).filled(np.nan).flatten()
-    p_mesh["data"] = data
-    p.add_mesh(p_mesh.threshold(), cmap=p_cmap, clim=p_clim, render=False, reset_camera=False, name="plume", show_scalar_bar=False)
 
     text = f"{dt.strftime(fmt)}"
     actor_text.SetText(3, text)
@@ -140,15 +141,15 @@ p = GeoBackgroundPlotter()
 p.enable_lightkit()
 p.set_background(color="black")
 
+plume = p_mesh.threshold()
+p.add_mesh(plume, name="plume", cmap=p_cmap, clim=p_clim, show_scalar_bar=False)
+
 opacity = None
 actor_boundary = p.add_mesh(bl_mesh, name="boundary", opacity=opacity, cmap=bl_cmap, clim=bl_clim, show_edges=False, show_scalar_bar=False)
 p.view_poi()
 
 sargs = {"color": color, "title": f"{capitalise(bl_cube.name())} / {str(bl_cube.units)}", "font_family": "arial", "label_font_size": 10, "n_labels": 5}
 actor_scalar = p.add_scalar_bar(mapper=actor_boundary.mapper, **sargs)
-
-plume = p_mesh.threshold()
-p.add_mesh(plume, name="plume", cmap=p_cmap, clim=p_clim, show_scalar_bar=False)
 
 p.add_mesh(base, texture=texture, opacity=0.5, show_edges=True)
 p.add_mesh(outline, color="orange", line_width=1)
