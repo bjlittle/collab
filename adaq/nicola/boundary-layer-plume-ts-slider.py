@@ -94,7 +94,7 @@ bl_cmap = "deep_r"
 p_cmap = "fire_r"
 p_clim = (0.0, 9e-6)
 color = "white"
-factor = 4e-6
+factor = 4e-6  # on-change: regenerate plume.vtk !
 
 bl_ds = nc.Dataset(bl_fname)
 bl_data = bl_ds.variables["var__boundary_layer_depth"]
